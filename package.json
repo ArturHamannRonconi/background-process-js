@@ -2,6 +2,12 @@
   "name": "backgroundjs",
   "version": "1.0.0",
   "main": "index.js",
+  "keywords": [
+    "backgroundjs",
+    "background",
+    "background-process",
+    "consumer"
+  ],
   "author": "ArturHamannRonconi <arturhronconi@gmail.com>",
   "repository": "git@github.com:ArturHamannRonconi/backgroundjs.git",
   "description": "A set of util tools for create background process.",
@@ -10,14 +16,14 @@
     "@aws-sdk/client-sqs": "^3.523.0"
   },
   "devDependencies": {
-    "typescript": "*",
-    "eslint": "^8.42.0",
-    "prettier": "^3.0.0",
     "@types/node": "^20.11.22",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.42.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0"
+    "prettier": "^3.0.0",
+    "typescript": "*"
   },
   "scripts": {
     "build": "tsc"
