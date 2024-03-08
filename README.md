@@ -1,15 +1,15 @@
-# backgroundjs
+# background-process-js
 A set of util tools for create background process.
 
 ## How to use?
 
-You have two manners for use backgroundjs, you can use some our implementations or you can create your own.
+You have two manners for use background-process-js, you can use some our implementations or you can create your own.
 
 ### Using our implementation.
 
 ```ts
   import { SQSClient } from 'aws-sdk';
-  import { SQSConsumer, SQSConfig, ConsumerConfig } from 'backgroundjs';
+  import { SQSConsumer, SQSConfig, ConsumerConfig } from 'background-process-js';
 
   const sqs = new SQSClient();
   const sqsConfig = {
@@ -31,7 +31,7 @@ You have two manners for use backgroundjs, you can use some our implementations 
 
 ```ts
   import { Message } from 'aws-sdk';
-  import { Consumer, ConsumerConfig } from "backgroundjs";
+  import { Consumer, ConsumerConfig } from "background-process-js";
 
   export class SQSConsumer extends Consumer<Message> {
     

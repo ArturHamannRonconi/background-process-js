@@ -1,15 +1,16 @@
 {
-  "name": "backgroundjs",
+  "name": "background-process-js",
   "version": "1.0.0",
   "main": "index.js",
   "keywords": [
     "backgroundjs",
     "background",
+    "background-process-js",
     "background-process",
     "consumer"
   ],
   "author": "ArturHamannRonconi <arturhronconi@gmail.com>",
-  "repository": "git@github.com:ArturHamannRonconi/backgroundjs.git",
+  "repository": "git@github.com:ArturHamannRonconi/background-process-js.git",
   "description": "A set of util tools for create background process.",
   "license": "MIT",
   "dependencies": {
