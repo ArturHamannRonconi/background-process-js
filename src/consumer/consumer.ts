@@ -19,20 +19,20 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
   protected abstract deleteMessages(messages: MessagesType[]): Promise<void>;
 
   start(): void {
+    this.once("catch", (error) => {
+      this.stop();
+      console.error(error);
+    });
+
     this.interval = setInterval(async () => {
-      this.once("catch", (error) => {
-        this.stop();
-        console.error(error);
+      this.once("finish", async () => {
+        await this.deleteMessages(messages);
       });
 
       const messages = await this.messagesPolling();
 
       if (messages.length <= 0) return;
       this.emit("process", messages);
-
-      this.once("finish", async () => {
-        await this.deleteMessages(messages);
-      });
     }, this.config.intervalInMilliseconds);
   }
 
