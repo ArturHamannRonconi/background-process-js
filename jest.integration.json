@@ -1,0 +1,13 @@
+{
+  "rootDir": "src",
+  "testTimeout": 500000,
+  "testEnvironment": "node",
+  "testRegex": ".*\\.test\\.ts$",
+  "moduleFileExtensions": ["ts", "js", "json"],
+  "moduleNameMapper": {
+    "src/(.*)": "<rootDir>/$1"
+  },
+  "transform": {
+    "^.+\\.tsx?$": "ts-jest"
+  }
+}
