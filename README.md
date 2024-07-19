@@ -14,15 +14,19 @@ You have two manners for use background-process-js, you can use some our impleme
   const sqs = new SQSClient();
   const sqsConfig = {
     client: sqs,
-    WaitTimeSeconds: 25,
+    WaitTimeSeconds: 20,
     VisibilityTimeout: 30,
     MaxNumberOfMessages: 10,
-    QueueUrl: 'https://sqs.{region}.amazonaws.com/{accountID}/{queueName}'
+    mainQueueUrl: 'https://sqs.{region}.amazonaws.com/{accountID}/{queueName}'
+    deadQueueUrl: 'https://sqs.{region}.amazonaws.com/{accountID}/{queueName}'
   };
 
 
   const fiveSeconds = 5 * 1000; // (optional) if is undefined is equal 1 minute
-  const consumerConfig = { intervalInMilliseconds: fiveSeconds };
+  const consumerConfig = {
+    hasDeadQueue: true,
+    intervalInMilliseconds: fiveSeconds,
+  };
 
   const consumer = new SQSConsumer(sqsConfig, consumerConfig);
 ```
@@ -37,7 +41,10 @@ You have two manners for use background-process-js, you can use some our impleme
     
     constructor() {
       const fiveSeconds = 5 * 1000; // (optional) if is undefined is equal 1 minute
-      const consumerConfig = { intervalInMilliseconds: fiveSeconds };
+      const consumerConfig = {
+        hasDeadQueue: true,
+        intervalInMilliseconds: fiveSeconds,
+      };
 
       super(consumerConfig);
     }
@@ -49,29 +56,37 @@ You have two manners for use background-process-js, you can use some our impleme
     protected async deleteMessages(messages: Message[]): Promise<void> {
       // code...
     }
+
+    protected async markAsDeadMessages(messages: Message[]): Promise<void> {
+      // code...
+    }
   }
 ```
 
 For any implementation you can set the following listeners and methods.
 ```ts
-  import { Message } from 'aws-sdk';
-
   // This process event will be execute by default every 1 minute 
-  consumer.on('process', (messages: Message[]) => {
+  consumer.process(({ messages, intervalId }) => {
     // code for processing message...
+
+    const deadMessages = [...messages];
+    const processedMessages = [...messages];
 
     if (isInvalidMessage) {
       // This emitter will be log an error and stop consumer
-      consumer.emit('catch', new Error());
+      consumer.catch(new Error());
     }
 
     // This emmiter will be delete message from queue
-    consumer.emit('finish', messages);
+    consumer.finish(intervalId, processedMessages);
+
+    // This emmiter will be send messages to dead queue
+    consumer.dead(intervalId, deadMessages);
   });
 
-  // This method will start consumer process
-  consumer.start();
+  // This method will start many intervals of consumers
+  consumer.start(5);
 
-  // This method will stop consumer process
+  // This method will stop all intervals of consumers
   consumer.stop();
 ```
