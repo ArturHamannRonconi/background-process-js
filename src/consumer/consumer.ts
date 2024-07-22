@@ -13,7 +13,7 @@ export enum Events {
 }
 
 export type ProcessHook<T> = (data: {
-  messages: T;
+  messages: T[];
   scalingId: string;
 }) => Promise<void>;
 
