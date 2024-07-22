@@ -6,7 +6,7 @@ import {
   DeleteMessageBatchCommand,
 } from "@aws-sdk/client-sqs";
 
-import { Consumer, ConsumerConfig } from "../../consumer";
+import { Consumer } from "../../consumer";
 
 export interface SQSConfig {
   client: SQSClient;
@@ -18,11 +18,8 @@ export interface SQSConfig {
 }
 
 export class SQSConsumer extends Consumer<Message> {
-  constructor(
-    private readonly sqsConfig: SQSConfig,
-    consumerConfig: ConsumerConfig,
-  ) {
-    super(consumerConfig);
+  constructor(private readonly sqsConfig: SQSConfig) {
+    super({ hasDeadQueue: !!sqsConfig.deadQueueUrl });
   }
 
   protected async messagesPolling(): Promise<Message[]> {

@@ -5,7 +5,7 @@ import {
 } from "@aws-sdk/client-sqs";
 import { SQSConfig, SQSConsumer } from "./sqs-consumer";
 import { createMock, deleteMock } from "./sqs-queue.mock";
-import { ConsumerConfig, Events } from "src/consumer/consumer";
+import { Events } from "src/consumer/consumer";
 
 describe("sqs.consumer.spec", () => {
   let client: SQSClient;
@@ -13,7 +13,6 @@ describe("sqs.consumer.spec", () => {
   let deadQueueUrl: string;
   let sqsConfig: SQSConfig;
   let consumer: SQSConsumer;
-  let consumerConfig: ConsumerConfig;
 
   beforeAll(() => {
     const mockQueues = createMock();
@@ -38,12 +37,7 @@ describe("sqs.consumer.spec", () => {
       MaxNumberOfMessages: 10,
     };
 
-    consumerConfig = {
-      hasDeadQueue: true,
-      intervalInMilliseconds: 3,
-    };
-
-    consumer = new SQSConsumer(sqsConfig, consumerConfig);
+    consumer = new SQSConsumer(sqsConfig);
   });
 
   beforeEach(async () => {
@@ -132,50 +126,23 @@ describe("sqs.consumer.spec", () => {
       it("should create three intervals", () => {
         consumer.start(3);
 
-        expect(consumer["intervals"]).toHaveLength(3);
         expect(consumer.eventNames()).toHaveLength(1);
 
-        consumer.stop();
-      });
-    });
-
-    describe("stop", () => {
-      it("should clear all intervalls and not console erro", () => {
-        consumer.start();
-
-        const spyConsoleError = jest.spyOn(console, "error");
-        const spyForEach = jest.spyOn(consumer["intervals"], "forEach");
-
-        consumer.stop();
-
-        expect(spyConsoleError).not.toHaveBeenCalled();
-        expect(spyForEach).toHaveBeenCalledWith(clearInterval);
-      });
-
-      it("should clear all intervalls and console erro", () => {
-        consumer.start();
-
-        const spyConsoleError = jest.spyOn(console, "error");
-        const spyForEach = jest.spyOn(consumer["intervals"], "forEach");
-
-        consumer.stop(new Error("KKK"));
-
-        expect(spyConsoleError).toHaveBeenCalled();
-        expect(spyForEach).toHaveBeenCalledWith(clearInterval);
+        consumer.catch(new Error());
       });
     });
 
     describe("finish", () => {
       it("should emit finish event", () => {
         const messages = [];
-        const intervalId = "test";
+        const scalingId = "test";
 
         const emitSpy = jest.spyOn(consumer, "emit");
 
-        consumer.finish(intervalId, messages);
+        consumer.finish(scalingId, messages);
 
         expect(emitSpy).toHaveBeenCalledWith(
-          `${Events.FINISH}-${intervalId}`,
+          `${Events.FINISH}-${scalingId}`,
           messages,
         );
       });
@@ -184,14 +151,14 @@ describe("sqs.consumer.spec", () => {
     describe("dead", () => {
       it("should emit dead event", () => {
         const messages = [];
-        const intervalId = "test";
+        const scalingId = "test";
 
         const emitSpy = jest.spyOn(consumer, "emit");
 
-        consumer.dead(intervalId, messages);
+        consumer.dead(scalingId, messages);
 
         expect(emitSpy).toHaveBeenCalledWith(
-          `${Events.DEAD}-${intervalId}`,
+          `${Events.DEAD}-${scalingId}`,
           messages,
         );
       });
@@ -200,7 +167,6 @@ describe("sqs.consumer.spec", () => {
     describe("catch", () => {
       it("should emit catch event", () => {
         const error = new Error("kkk");
-
         const emitSpy = jest.spyOn(consumer, "emit");
 
         consumer.catch(error);

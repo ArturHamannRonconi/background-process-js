@@ -3,7 +3,6 @@ import { EventEmitter } from "node:events";
 
 export interface ConsumerConfig {
   hasDeadQueue: boolean;
-  intervalInMilliseconds?: number;
 }
 
 export enum Events {
@@ -13,15 +12,16 @@ export enum Events {
   PROCESS = "process",
 }
 
+export type ProcessHook<T> = (data: {
+  messages: T;
+  scalingId: string;
+}) => Promise<void>;
+
 export abstract class Consumer<MessagesType> extends EventEmitter {
-  private intervals: NodeJS.Timeout[];
+  private isStoppedProcess = false;
 
   constructor(private readonly config: ConsumerConfig) {
     super();
-
-    const oneMinute = 60 * 1000;
-    this.config.intervalInMilliseconds =
-      config.intervalInMilliseconds ?? oneMinute;
   }
 
   protected abstract messagesPolling(): Promise<MessagesType[]>;
@@ -30,58 +30,66 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
     messages: MessagesType[],
   ): Promise<void>;
 
-  finish(intervalId: string, messages: MessagesType[]) {
-    this.emit(`${Events.FINISH}-${intervalId}`, messages);
+  finish(scalingId: string, messages: MessagesType[]) {
+    this.emit(`${Events.FINISH}-${scalingId}`, messages);
   }
 
-  dead(intervalId: string, messages: MessagesType[]) {
-    this.emit(`${Events.DEAD}-${intervalId}`, messages);
+  dead(scalingId: string, messages: MessagesType[]) {
+    this.emit(`${Events.DEAD}-${scalingId}`, messages);
   }
 
   catch(err: Error) {
     this.emit(Events.CATCH, err);
   }
 
-  process(
-    callback: (data: {
-      messages: MessagesType;
-      intervalId: string;
-    }) => Promise<void>,
-  ) {
-    this.on(Events.PROCESS, callback);
+  process(hook: ProcessHook<MessagesType>) {
+    this.on(Events.PROCESS, hook);
   }
 
-  start(amount = 1): void {
-    this.intervals = new Array(amount);
+  async start(amount = 1): Promise<void> {
+    this.isStoppedProcess = false;
 
-    const stop = this.stop.bind(this);
-    const deleteMessages = this.deleteMessages.bind(this);
-    const markAsDeadMessages = this.markAsDeadMessages.bind(this);
+    this.once(Events.CATCH, (error) => {
+      this.isStoppedProcess = true;
+      console.error(error);
+    });
 
-    this.once(Events.CATCH, stop);
+    const startScalingAmount = this.startScalingAmount.bind(this);
 
-    for (let i = 0; i < amount; i++) {
-      const intervalId = randomUUID();
+    await Promise.all(
+      new Array(amount).fill(startScalingAmount).map(async (fn) => {
+        const scalingId = randomUUID();
+        await fn(scalingId);
+      }),
+    );
+  }
 
-      const interval = setInterval(async () => {
-        const messages = await this.messagesPolling();
-        if (messages.length <= 0) return;
+  private async startScalingAmount(scalingId: string) {
+    if (this.isStoppedProcess) return;
 
-        this.once(`${Events.FINISH}-${intervalId}`, deleteMessages);
+    try {
+      const deleteMessages = this.deleteMessages.bind(this);
+      const markAsDeadMessages = this.markAsDeadMessages.bind(this);
+      const startScalingAmount = this.startScalingAmount.bind(this, scalingId);
 
-        if (this.config.hasDeadQueue) {
-          this.once(`${Events.DEAD}-${intervalId}`, markAsDeadMessages);
-        }
+      let messages: MessagesType[] = [];
+      const isEmpty = (messages: MessagesType[]) => messages.length <= 0;
 
-        this.emit(Events.PROCESS, { messages, intervalId });
-      }, this.config.intervalInMilliseconds);
+      do {
+        messages = await this.messagesPolling();
+      } while (isEmpty(messages));
 
-      this.intervals[i] = interval;
+      this.once(`${Events.FINISH}-${scalingId}`, deleteMessages);
+
+      if (this.config.hasDeadQueue) {
+        this.once(`${Events.DEAD}-${scalingId}`, markAsDeadMessages);
+      }
+
+      this.once(`${Events.FINISH}-${scalingId}`, startScalingAmount);
+
+      this.emit(Events.PROCESS, { messages, scalingId });
+    } catch (error) {
+      this.catch(error);
     }
-  }
-
-  stop(error?: Error) {
-    this.intervals.forEach(clearInterval);
-    if (error) console.error(error);
   }
 }

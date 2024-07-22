@@ -21,14 +21,7 @@ You have two manners for use background-process-js, you can use some our impleme
     deadQueueUrl: 'https://sqs.{region}.amazonaws.com/{accountID}/{queueName}'
   };
 
-
-  const fiveSeconds = 5 * 1000; // (optional) if is undefined is equal 1 minute
-  const consumerConfig = {
-    hasDeadQueue: true,
-    intervalInMilliseconds: fiveSeconds,
-  };
-
-  const consumer = new SQSConsumer(sqsConfig, consumerConfig);
+  const consumer = new SQSConsumer(sqsConfig);
 ```
 
 ### Using your own implementation.
@@ -40,12 +33,6 @@ You have two manners for use background-process-js, you can use some our impleme
   export class SQSConsumer extends Consumer<Message> {
     
     constructor() {
-      const fiveSeconds = 5 * 1000; // (optional) if is undefined is equal 1 minute
-      const consumerConfig = {
-        hasDeadQueue: true,
-        intervalInMilliseconds: fiveSeconds,
-      };
-
       super(consumerConfig);
     }
 
@@ -66,7 +53,7 @@ You have two manners for use background-process-js, you can use some our impleme
 For any implementation you can set the following listeners and methods.
 ```ts
   // This process event will be execute by default every 1 minute 
-  consumer.process(({ messages, intervalId }) => {
+  consumer.process(({ messages, scalingId }) => {
     // code for processing message...
 
     const deadMessages = [...messages];
@@ -78,15 +65,12 @@ For any implementation you can set the following listeners and methods.
     }
 
     // This emmiter will be delete message from queue
-    consumer.finish(intervalId, processedMessages);
+    consumer.finish(scalingId, processedMessages);
 
     // This emmiter will be send messages to dead queue
-    consumer.dead(intervalId, deadMessages);
+    consumer.dead(scalingId, deadMessages);
   });
 
   // This method will start many intervals of consumers
   consumer.start(5);
-
-  // This method will stop all intervals of consumers
-  consumer.stop();
 ```
