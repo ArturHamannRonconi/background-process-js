@@ -50,6 +50,8 @@ export class SQSConsumer extends Consumer<Message> {
   }
 
   protected async markAsDeadMessages(messages: Message[]): Promise<void> {
+    if (messages.length === 0) return;
+
     if (!this.sqsConfig.deadQueueUrl) {
       throw Error("Need to pass 'deadQueueUrl' in sqs config");
     }
