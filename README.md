@@ -21,22 +21,35 @@ You have two manners for use background-process-js, you can use some our impleme
     deadQueueUrl: 'https://sqs.{region}.amazonaws.com/{accountID}/{queueName}'
   };
 
-  const consumer = new SQSConsumer(sqsConfig);
+
+  // If it is true will continuously polling in the queue,
+  // and if the queue return less than MaxNumberOfMessages and greather than zero
+  // will set a timeout with WaitTimeSeconds number for continuously polling queue.  
+  
+  // If it is false you must control the timeouts and times for polling.
+  const continuouslyPolling = true || false;
+                                              // Default false
+  const consumer = new SQSConsumer(sqsConfig, continuouslyPolling);
 ```
 
 ### Using your own implementation.
 
 ```ts
   import { Message } from 'aws-sdk';
-  import { Consumer, ConsumerConfig } from "background-process-js";
+  import { Consumer } from "background-process-js";
 
   export class SQSConsumer extends Consumer<Message> {
     
     constructor() {
-      super(consumerConfig);
+      super({
+        hasDeadQueue: true || false,
+        maxReceivedMessages: 10,
+        continuouslyPolling: true || false,
+        timeoutAfterEndingPollingInMilliseconds: 20 * 1000, // 20 seconds
+      });
     }
 
-    protected async messagesPolling(): Promise<Message[]> {
+    protected async getMessages(): Promise<Message[]> {
       // code...
     }
 
@@ -71,6 +84,6 @@ For any implementation you can set the following listeners and methods.
     consumer.dead(scalingId, deadMessages);
   });
 
-  // This method will start many intervals of consumers
-  consumer.start(5);
+  // This method will start many pollings
+  consumer.poll(5);
 ```

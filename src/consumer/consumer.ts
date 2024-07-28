@@ -3,6 +3,9 @@ import { EventEmitter } from "node:events";
 
 export interface ConsumerConfig {
   hasDeadQueue: boolean;
+  maxReceivedMessages: number;
+  continuouslyPolling: boolean;
+  timeoutAfterEndingPollingInMilliseconds: number;
 }
 
 export enum Events {
@@ -24,7 +27,7 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
     super();
   }
 
-  protected abstract messagesPolling(): Promise<MessagesType[]>;
+  protected abstract getMessages(): Promise<MessagesType[]>;
   protected abstract deleteMessages(messages: MessagesType[]): Promise<void>;
   protected abstract markAsDeadMessages(
     messages: MessagesType[],
@@ -46,7 +49,7 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
     this.on(Events.PROCESS, hook);
   }
 
-  async start(amount = 1): Promise<void> {
+  async poll(amount = 1): Promise<void> {
     this.isStoppedProcess = false;
 
     this.once(Events.CATCH, (error) => {
@@ -54,30 +57,41 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
       console.error(error);
     });
 
-    const startScalingAmount = this.startScalingAmount.bind(this);
+    const scalablePolling = this.scalablePolling.bind(this);
+    const pollings = new Array(amount).fill(scalablePolling);
 
-    await Promise.all(
-      new Array(amount).fill(startScalingAmount).map(async (fn) => {
-        const scalingId = randomUUID();
-        await fn(scalingId);
-      }),
-    );
+    const pollPromises = pollings.map(async (poll) => {
+      const scalingId = randomUUID();
+      await poll(scalingId);
+    });
+
+    await Promise.all(pollPromises);
   }
 
-  private async startScalingAmount(scalingId: string) {
+  private async scalablePolling(scalingId: string) {
     if (this.isStoppedProcess) return;
 
+    let messages: MessagesType[] = [];
+    const isEmpty = (messages: MessagesType[]) => messages.length === 0;
+
+    const deleteMessages = this.deleteMessages.bind(this);
+    const markAsDeadMessages = this.markAsDeadMessages.bind(this);
+    const scalablePolling = this.scalablePolling.bind(this, scalingId);
+    const timeoutToPolling = (messages: MessagesType[]) =>
+      setTimeout(
+        scalablePolling(messages),
+        this.config.timeoutAfterEndingPollingInMilliseconds,
+      );
+
     try {
-      const deleteMessages = this.deleteMessages.bind(this);
-      const markAsDeadMessages = this.markAsDeadMessages.bind(this);
-      const startScalingAmount = this.startScalingAmount.bind(this, scalingId);
-
-      let messages: MessagesType[] = [];
-      const isEmpty = (messages: MessagesType[]) => messages.length <= 0;
-
-      do {
-        messages = await this.messagesPolling();
-      } while (isEmpty(messages));
+      if (this.config.continuouslyPolling) {
+        do {
+          messages = await this.getMessages();
+        } while (isEmpty(messages));
+      } else {
+        messages = await this.getMessages();
+        if (isEmpty(messages)) return;
+      }
 
       this.once(`${Events.FINISH}-${scalingId}`, deleteMessages);
 
@@ -85,7 +99,14 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
         this.once(`${Events.DEAD}-${scalingId}`, markAsDeadMessages);
       }
 
-      this.once(`${Events.FINISH}-${scalingId}`, startScalingAmount);
+      const receivedMaxMessages =
+        messages.length === this.config.maxReceivedMessages;
+
+      if (receivedMaxMessages) {
+        this.once(`${Events.FINISH}-${scalingId}`, scalablePolling);
+      } else if (this.config.continuouslyPolling) {
+        this.once(`${Events.FINISH}-${scalingId}`, timeoutToPolling);
+      }
 
       this.emit(Events.PROCESS, { messages, scalingId });
     } catch (error) {

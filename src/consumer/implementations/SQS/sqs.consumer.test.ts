@@ -49,13 +49,13 @@ describe("sqs.consumer.spec", () => {
     );
   });
 
-  describe("messagesPolling", () => {
+  describe("getMessages", () => {
     it("should poll all messages", async () => {
       const clientSendSpy = jest.spyOn(client, "send");
 
-      const messagesPolling = consumer["messagesPolling"].bind(consumer);
+      const getMessages = consumer["getMessages"].bind(consumer);
 
-      const messages = await messagesPolling();
+      const messages = await getMessages();
 
       expect(clientSendSpy).toHaveBeenCalled();
       expect(messages[0].Body).toEqual("test");
@@ -64,9 +64,9 @@ describe("sqs.consumer.spec", () => {
 
   describe("deleteMessages", () => {
     it("should delete all messages", async () => {
-      const messagesPolling = consumer["messagesPolling"].bind(consumer);
+      const getMessages = consumer["getMessages"].bind(consumer);
 
-      const messages1 = await messagesPolling();
+      const messages1 = await getMessages();
       expect(messages1).toHaveLength(2);
 
       const clientSendSpy = jest.spyOn(client, "send");
@@ -76,16 +76,16 @@ describe("sqs.consumer.spec", () => {
 
       expect(clientSendSpy).toHaveBeenCalled();
 
-      const messages2 = await messagesPolling();
+      const messages2 = await getMessages();
       expect(messages2).toHaveLength(0);
     });
   });
 
   describe("markAsDeadMessages", () => {
     it("should send message to dead queue", async () => {
-      const messagesPolling = consumer["messagesPolling"].bind(consumer);
+      const getMessages = consumer["getMessages"].bind(consumer);
 
-      const messagesFromMain1 = await messagesPolling();
+      const messagesFromMain1 = await getMessages();
       expect(messagesFromMain1).toHaveLength(1);
 
       const { Messages: messagesFromDead1 } = await client.send(
@@ -116,7 +116,7 @@ describe("sqs.consumer.spec", () => {
 
       expect(messagesFromDead2).toHaveLength(1);
 
-      const messagesFromMain2 = await messagesPolling();
+      const messagesFromMain2 = await getMessages();
       expect(messagesFromMain2).toHaveLength(1);
     });
   });
@@ -124,7 +124,7 @@ describe("sqs.consumer.spec", () => {
   describe("consumer.spec", () => {
     describe("start", () => {
       it("should create three intervals", () => {
-        consumer.start(3);
+        consumer.poll(3);
 
         expect(consumer.eventNames()).toHaveLength(1);
 

@@ -18,11 +18,19 @@ export interface SQSConfig {
 }
 
 export class SQSConsumer extends Consumer<Message> {
-  constructor(private readonly sqsConfig: SQSConfig) {
-    super({ hasDeadQueue: !!sqsConfig.deadQueueUrl });
+  constructor(
+    private readonly sqsConfig: SQSConfig,
+    continuouslyPolling = false,
+  ) {
+    super({
+      continuouslyPolling,
+      hasDeadQueue: !!sqsConfig.deadQueueUrl,
+      maxReceivedMessages: sqsConfig.MaxNumberOfMessages,
+      timeoutAfterEndingPollingInMilliseconds: sqsConfig.WaitTimeSeconds,
+    });
   }
 
-  protected async messagesPolling(): Promise<Message[]> {
+  protected async getMessages(): Promise<Message[]> {
     const receiveCommand = new ReceiveMessageCommand({
       QueueUrl: this.sqsConfig.mainQueueUrl,
       WaitTimeSeconds: this.sqsConfig.WaitTimeSeconds,
