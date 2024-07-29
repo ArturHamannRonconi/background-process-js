@@ -79,7 +79,7 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
     const scalablePolling = this.scalablePolling.bind(this, scalingId);
     const timeoutToPolling = (messages: MessagesType[]) =>
       setTimeout(
-        scalablePolling(messages),
+        () => scalablePolling(messages),
         this.config.timeoutAfterEndingPollingInMilliseconds,
       );
 
