@@ -64,11 +64,18 @@ export class SQSConsumer extends Consumer<Message> {
       throw Error("Need to pass 'deadQueueUrl' in sqs config");
     }
 
+    const isFifoQueue = this.sqsConfig.deadQueueUrl.includes(".fifo");
     const deleteMessageCommand = new SendMessageBatchCommand({
       QueueUrl: this.sqsConfig.deadQueueUrl,
       Entries: messages.map((message) => ({
         Id: message.MessageId,
         MessageBody: message.Body,
+        MessageGroupId: isFifoQueue
+          ? message.Attributes.MessageGroupId
+          : undefined,
+        MessageDeduplicationId: isFifoQueue
+          ? message.Attributes.MessageDeduplicationId
+          : undefined,
       })),
     });
 
