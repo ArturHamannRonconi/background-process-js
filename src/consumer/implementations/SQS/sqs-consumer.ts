@@ -7,6 +7,7 @@ import {
 } from "@aws-sdk/client-sqs";
 
 import { Consumer } from "../../consumer";
+import { randomUUID } from "crypto";
 
 export interface SQSConfig {
   client: SQSClient;
@@ -70,12 +71,8 @@ export class SQSConsumer extends Consumer<Message> {
       Entries: messages.map((message) => ({
         Id: message.MessageId,
         MessageBody: message.Body,
-        MessageGroupId: isFifoQueue
-          ? message.Attributes.MessageGroupId
-          : undefined,
-        MessageDeduplicationId: isFifoQueue
-          ? message.Attributes.MessageDeduplicationId
-          : undefined,
+        MessageDeduplicationId: isFifoQueue ? randomUUID() : undefined,
+        MessageGroupId: isFifoQueue ? this.sqsConfig.deadQueueUrl : undefined,
       })),
     });
 
