@@ -4,6 +4,7 @@ import {
   ReceiveMessageCommand,
   SendMessageBatchCommand,
   DeleteMessageBatchCommand,
+  MessageSystemAttributeName,
 } from "@aws-sdk/client-sqs";
 
 import { Consumer } from "../../consumer";
@@ -17,6 +18,7 @@ export interface SQSConfig {
   VisibilityTimeout: number;
   MaxNumberOfMessages: number;
   MessageAttributeNames?: string[];
+  MessageSystemAttributeNames?: MessageSystemAttributeName[];
 }
 
 export class SQSConsumer extends Consumer<Message> {
@@ -39,6 +41,7 @@ export class SQSConsumer extends Consumer<Message> {
       VisibilityTimeout: this.sqsConfig.VisibilityTimeout,
       MaxNumberOfMessages: this.sqsConfig.MaxNumberOfMessages,
       MessageAttributeNames: this.sqsConfig.MessageAttributeNames,
+      MessageSystemAttributeNames: this.sqsConfig.MessageSystemAttributeNames,
     });
 
     const { Messages } = await this.sqsConfig.client.send(receiveCommand);
