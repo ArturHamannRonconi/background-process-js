@@ -16,6 +16,7 @@ export interface SQSConfig {
   WaitTimeSeconds: number;
   VisibilityTimeout: number;
   MaxNumberOfMessages: number;
+  MessageAttributeNames?: string[];
 }
 
 export class SQSConsumer extends Consumer<Message> {
@@ -37,6 +38,7 @@ export class SQSConsumer extends Consumer<Message> {
       WaitTimeSeconds: this.sqsConfig.WaitTimeSeconds,
       VisibilityTimeout: this.sqsConfig.VisibilityTimeout,
       MaxNumberOfMessages: this.sqsConfig.MaxNumberOfMessages,
+      MessageAttributeNames: this.sqsConfig.MessageAttributeNames,
     });
 
     const { Messages } = await this.sqsConfig.client.send(receiveCommand);
