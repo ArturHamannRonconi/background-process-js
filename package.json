@@ -1,6 +1,6 @@
 {
   "name": "background-process-js",
-  "version": "6.3.0",
+  "version": "6.3.1",
   "main": "./lib/index.js",
   "keywords": [
     "backgroundjs",
@@ -14,7 +14,7 @@
   "description": "A set of util tools for create background process.",
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.523.0"
+    "@aws-sdk/client-sqs": "3.620.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",

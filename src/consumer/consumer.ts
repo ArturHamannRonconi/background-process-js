@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { List } from "src/utils/List";
 
 export interface ConsumerConfig {
   hasDeadQueue: boolean;
@@ -72,8 +73,6 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
     if (this.isStoppedProcess) return;
 
     let messages: MessagesType[] = [];
-    const isEmpty = (messages: MessagesType[]) => messages.length === 0;
-
     const deleteMessages = this.deleteMessages.bind(this);
     const markAsDeadMessages = this.markAsDeadMessages.bind(this);
     const scalablePolling = this.scalablePolling.bind(this, scalingId);
@@ -87,10 +86,10 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
       if (this.config.continuouslyPolling) {
         do {
           messages = await this.getMessages();
-        } while (isEmpty(messages));
+        } while (List.isEmpty(messages));
       } else {
         messages = await this.getMessages();
-        if (isEmpty(messages)) return;
+        if (List.isEmpty(messages)) return;
       }
 
       this.once(`${Events.FINISH}-${scalingId}`, deleteMessages);

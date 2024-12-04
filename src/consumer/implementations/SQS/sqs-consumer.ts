@@ -52,6 +52,8 @@ export class SQSConsumer extends Consumer<Message> {
   }
 
   protected async deleteMessages(messages: Message[]): Promise<void> {
+    if (messages.length === 0) return;
+
     const deleteMessageCommand = new DeleteMessageBatchCommand({
       QueueUrl: this.sqsConfig.mainQueueUrl,
       Entries: messages.map((message) => ({
@@ -71,7 +73,7 @@ export class SQSConsumer extends Consumer<Message> {
     }
 
     const isFifoQueue = this.sqsConfig.deadQueueUrl.includes(".fifo");
-    const deleteMessageCommand = new SendMessageBatchCommand({
+    const sendMessageBatchCommand = new SendMessageBatchCommand({
       QueueUrl: this.sqsConfig.deadQueueUrl,
       Entries: messages.map((message) => ({
         Id: message.MessageId,
@@ -81,6 +83,6 @@ export class SQSConsumer extends Consumer<Message> {
       })),
     });
 
-    await this.sqsConfig.client.send(deleteMessageCommand);
+    await this.sqsConfig.client.send(sendMessageBatchCommand);
   }
 }
