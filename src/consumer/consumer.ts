@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { List } from "src/utils/List";
 
 export interface ConsumerConfig {
   hasDeadQueue: boolean;
@@ -10,6 +9,7 @@ export interface ConsumerConfig {
 }
 
 export enum Events {
+  STOP = "stop",
   DEAD = "dead",
   CATCH = "catch",
   FINISH = "finish",
@@ -22,7 +22,10 @@ export type ProcessHook<T> = (data: {
 }) => Promise<void>;
 
 export abstract class Consumer<MessagesType> extends EventEmitter {
-  private isStoppedProcess = false;
+  private stopedProcess = 0;
+  private processToStop = 0;
+  private needStopProcess = false;
+  private stopedCallback: () => void;
 
   constructor(private readonly config: ConsumerConfig) {
     super();
@@ -42,8 +45,14 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
     this.emit(`${Events.DEAD}-${scalingId}`, messages);
   }
 
-  catch(err: Error) {
+  stop(callback?: () => void) {
+    this.emit(Events.STOP);
+    this.stopedCallback = callback;
+  }
+
+  catch(err: Error, callback?: () => void) {
     this.emit(Events.CATCH, err);
+    this.stop(callback);
   }
 
   process(hook: ProcessHook<MessagesType>) {
@@ -51,31 +60,43 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
   }
 
   async poll(amount = 1): Promise<void> {
-    this.isStoppedProcess = false;
+    this.processToStop = amount;
+    this.needStopProcess = false;
 
-    this.once(Events.CATCH, (error) => {
-      this.isStoppedProcess = true;
-      console.error(error);
+    this.once(Events.CATCH, console.error);
+    this.once(Events.STOP, () => {
+      this.needStopProcess = true;
     });
 
     const scalablePolling = this.scalablePolling.bind(this);
-    const pollings = new Array(amount).fill(scalablePolling);
+    const scalablePollings = new Array(amount).fill(scalablePolling);
 
-    const pollPromises = pollings.map(async (poll) => {
+    const pollPromises = scalablePollings.map(async (scalePoll) => {
       const scalingId = randomUUID();
-      await poll(scalingId);
+      await scalePoll(scalingId);
     });
 
     await Promise.all(pollPromises);
   }
 
   private async scalablePolling(scalingId: string) {
-    if (this.isStoppedProcess) return;
+    if (this.needStopProcess) {
+      this.stopedProcess += 1;
+
+      if (this.processToStop === this.stopedProcess) {
+        return this.stopedCallback();
+      }
+
+      return;
+    }
 
     let messages: MessagesType[] = [];
+
     const deleteMessages = this.deleteMessages.bind(this);
     const markAsDeadMessages = this.markAsDeadMessages.bind(this);
     const scalablePolling = this.scalablePolling.bind(this, scalingId);
+
+    const isEmpty = (arr: Array<any>) => arr.length === 0;
     const timeoutToPolling = (messages: MessagesType[]) =>
       setTimeout(
         () => scalablePolling(messages),
@@ -86,10 +107,10 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
       if (this.config.continuouslyPolling) {
         do {
           messages = await this.getMessages();
-        } while (List.isEmpty(messages));
+        } while (isEmpty(messages));
       } else {
         messages = await this.getMessages();
-        if (List.isEmpty(messages)) return;
+        if (isEmpty(messages)) return;
       }
 
       this.once(`${Events.FINISH}-${scalingId}`, deleteMessages);

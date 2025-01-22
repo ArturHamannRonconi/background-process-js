@@ -126,7 +126,7 @@ describe("sqs.consumer.spec", () => {
       it("should create three intervals", () => {
         consumer.poll(3);
 
-        expect(consumer.eventNames()).toHaveLength(1);
+        expect(consumer.eventNames()).toHaveLength(2);
 
         consumer.catch(new Error());
       });
