@@ -25,7 +25,7 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
   private stopedProcess = 0;
   private processToStop = 0;
   private needStopProcess = false;
-  private stopedCallback: () => void;
+  private stopPromiseResolver: (value: unknown) => void;
 
   constructor(private readonly config: ConsumerConfig) {
     super();
@@ -45,14 +45,16 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
     this.emit(`${Events.DEAD}-${scalingId}`, messages);
   }
 
-  stop(callback?: () => void) {
-    this.emit(Events.STOP);
-    this.stopedCallback = callback;
+  async stop() {
+    return new Promise((resolve) => {
+      this.emit(Events.STOP);
+      this.stopPromiseResolver = resolve;
+    });
   }
 
-  catch(err: Error, callback?: () => void) {
+  async catch(err: Error) {
     this.emit(Events.CATCH, err);
-    this.stop(callback);
+    await this.stop();
   }
 
   process(hook: ProcessHook<MessagesType>) {
@@ -79,15 +81,17 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
     await Promise.all(pollPromises);
   }
 
+  private considerStopedProcess() {
+    this.stopedProcess += 1;
+
+    if (this.processToStop === this.stopedProcess) {
+      this.stopPromiseResolver(null);
+    }
+  }
+
   private async scalablePolling(scalingId: string) {
     if (this.needStopProcess) {
-      this.stopedProcess += 1;
-
-      if (this.processToStop === this.stopedProcess) {
-        return this.stopedCallback();
-      }
-
-      return;
+      return this.considerStopedProcess();
     }
 
     let messages: MessagesType[] = [];
@@ -107,7 +111,12 @@ export abstract class Consumer<MessagesType> extends EventEmitter {
       if (this.config.continuouslyPolling) {
         do {
           messages = await this.getMessages();
+          if (this.needStopProcess) break;
         } while (isEmpty(messages));
+
+        if (this.needStopProcess) {
+          return this.considerStopedProcess();
+        }
       } else {
         messages = await this.getMessages();
         if (isEmpty(messages)) return;
