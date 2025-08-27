@@ -1,3 +1,7 @@
 src
-volume
-manual-tests/*
+.env
+.eslintrc.json
+jest.unit.json
+jest.integration.json
+tsconfig.json
+tsconfig.build.json

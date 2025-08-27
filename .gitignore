@@ -133,3 +133,5 @@ dist
 lib
 
 manual-tests/*
+
+.env
