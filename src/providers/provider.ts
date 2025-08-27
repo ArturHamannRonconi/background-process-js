@@ -6,9 +6,8 @@ export type Message = {
 
 export interface Provider {
   hasDeadQueue(): boolean;
-  getMaxNumberOfMessagesTotal(): number;
-  getMaxNumberOfMessagesByRequest(): number;
   getMessages(): Promise<Message[]>;
+  getMaxNumberOfMessagesByChunk(): number;
   deleteMessages(messages: Message[]): Promise<void>;
   markAsDeadMessages(messages: Message[]): Promise<void>;
 }

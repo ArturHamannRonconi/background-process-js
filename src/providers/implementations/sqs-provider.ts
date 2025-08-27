@@ -13,12 +13,11 @@ import { splitArrayInChunks } from "../../utils/split-array-in-chunks";
 export interface SQSProviderConfig {
   client: SQSClient;
   mainQueueUrl: string;
-  MaxNumberOfMessagesTotal: number;
-  MaxNumberOfMessagesByRequest?: number;
   deadQueueUrl?: string;
   WaitTimeSeconds?: number;
   VisibilityTimeout?: number;
   MessageAttributeNames?: string[];
+  MaxNumberOfMessagesByChunk?: number;
   MessageSystemAttributeNames?: MessageSystemAttributeName[];
 }
 
@@ -36,30 +35,22 @@ export class SQSProvider implements Provider {
       deadQueueUrl: sqsConfig.mainQueueUrl,
       MessageAttributeNames: sqsConfig.MessageAttributeNames,
       MessageSystemAttributeNames: sqsConfig.MessageSystemAttributeNames,
-      MaxNumberOfMessagesTotal: sqsConfig.MaxNumberOfMessagesTotal,
       WaitTimeSeconds:
         sqsConfig.WaitTimeSeconds ?? this.MAX_WAITING_TIME_SECONDS,
       VisibilityTimeout:
         sqsConfig.VisibilityTimeout ?? this.MAX_VISIBILITY_TIMEOUT,
-      MaxNumberOfMessagesByRequest:
-        sqsConfig.MaxNumberOfMessagesByRequest ??
+      MaxNumberOfMessagesByChunk:
+        sqsConfig.MaxNumberOfMessagesByChunk ??
         this.MAX_NUMBER_OF_MESSAGES_BY_SQS_REQUEST,
     };
 
     if (
-      this.sqsConfig.MaxNumberOfMessagesByRequest >
+      this.sqsConfig.MaxNumberOfMessagesByChunk >
       this.MAX_NUMBER_OF_MESSAGES_BY_SQS_REQUEST
     ) {
       throw Error("Exceeded the maximum number of messages by request (10)");
-    } else if (this.sqsConfig.MaxNumberOfMessagesByRequest < 1) {
+    } else if (this.sqsConfig.MaxNumberOfMessagesByChunk < 1) {
       throw Error("The minimum number of messages by request is 1");
-    } else if (
-      this.sqsConfig.MaxNumberOfMessagesTotal <
-      this.sqsConfig.MaxNumberOfMessagesByRequest
-    ) {
-      throw Error(
-        "The total number of messages must be greater than or equal to the number of messages per request",
-      );
     }
   }
 
@@ -67,15 +58,8 @@ export class SQSProvider implements Provider {
     return !!this.sqsConfig.deadQueueUrl;
   }
 
-  getMaxNumberOfMessagesTotal(): number {
-    return this.sqsConfig.MaxNumberOfMessagesByRequest >
-      this.sqsConfig.MaxNumberOfMessagesTotal
-      ? this.sqsConfig.MaxNumberOfMessagesByRequest
-      : this.sqsConfig.MaxNumberOfMessagesTotal;
-  }
-
-  getMaxNumberOfMessagesByRequest(): number {
-    return this.sqsConfig.MaxNumberOfMessagesByRequest;
+  getMaxNumberOfMessagesByChunk(): number {
+    return this.sqsConfig.MaxNumberOfMessagesByChunk;
   }
 
   async getMessages(): Promise<Message[]> {
@@ -84,7 +68,7 @@ export class SQSProvider implements Provider {
       WaitTimeSeconds: this.sqsConfig.WaitTimeSeconds,
       VisibilityTimeout: this.sqsConfig.VisibilityTimeout,
       MessageAttributeNames: this.sqsConfig.MessageAttributeNames,
-      MaxNumberOfMessages: this.sqsConfig.MaxNumberOfMessagesByRequest,
+      MaxNumberOfMessages: this.sqsConfig.MaxNumberOfMessagesByChunk,
       MessageSystemAttributeNames: this.sqsConfig.MessageSystemAttributeNames,
     });
 

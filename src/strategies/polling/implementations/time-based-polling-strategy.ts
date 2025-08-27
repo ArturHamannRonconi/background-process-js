@@ -6,6 +6,7 @@ export class TimeBasedPollingStrategy implements PollingStrategy {
 
   constructor(
     private readonly waitIntervalForEachGettedMessagesGroupInMilliseconds: number = 5000,
+    private readonly maxNumberOfMessagesTotal: number = 100,
   ) {} // five seconds is recomended
 
   async exec(provider: Provider): Promise<Message[]> {
@@ -14,7 +15,7 @@ export class TimeBasedPollingStrategy implements PollingStrategy {
         const messages = await provider.getMessages();
         this.messages.push(...messages);
 
-        if (this.messages.length >= provider.getMaxNumberOfMessagesTotal()) {
+        if (this.messages.length >= this.maxNumberOfMessagesTotal) {
           clearInterval(interval);
 
           const allMessages = this.messages;

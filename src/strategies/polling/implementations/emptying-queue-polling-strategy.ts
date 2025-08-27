@@ -10,10 +10,7 @@ export class EmptyingQueuePollingStrategy implements PollingStrategy {
     do {
       messages = await provider.getMessages();
       this.messages.push(...messages);
-    } while (
-      messages.length === provider.getMaxNumberOfMessagesByRequest() &&
-      this.messages.length < provider.getMaxNumberOfMessagesTotal()
-    );
+    } while (messages.length === provider.getMaxNumberOfMessagesByChunk());
 
     const allMessages = this.messages;
     this.messages = [];
