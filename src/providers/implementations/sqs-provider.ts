@@ -26,7 +26,7 @@ export class SQSProvider implements Provider {
 
   private readonly MAX_VISIBILITY_TIMEOUT = 300;
   private readonly MAX_WAITING_TIME_SECONDS = 20;
-  private readonly MAX_NUMBER_OF_MESSAGES_BY_SQS_REQUEST = 10;
+  private readonly MAX_NUMBER_OF_MESSAGES_BY_CHUNK = 10;
 
   constructor(sqsConfig: SQSProviderConfig) {
     this.sqsConfig = {
@@ -41,12 +41,12 @@ export class SQSProvider implements Provider {
         sqsConfig.VisibilityTimeout ?? this.MAX_VISIBILITY_TIMEOUT,
       MaxNumberOfMessagesByChunk:
         sqsConfig.MaxNumberOfMessagesByChunk ??
-        this.MAX_NUMBER_OF_MESSAGES_BY_SQS_REQUEST,
+        this.MAX_NUMBER_OF_MESSAGES_BY_CHUNK,
     };
 
     if (
       this.sqsConfig.MaxNumberOfMessagesByChunk >
-      this.MAX_NUMBER_OF_MESSAGES_BY_SQS_REQUEST
+      this.MAX_NUMBER_OF_MESSAGES_BY_CHUNK
     ) {
       throw Error("Exceeded the maximum number of messages by request (10)");
     } else if (this.sqsConfig.MaxNumberOfMessagesByChunk < 1) {
@@ -97,7 +97,7 @@ export class SQSProvider implements Provider {
 
     const chunks = splitArrayInChunks(
       messages,
-      this.MAX_NUMBER_OF_MESSAGES_BY_SQS_REQUEST,
+      this.MAX_NUMBER_OF_MESSAGES_BY_CHUNK,
     );
 
     const chunksOfChunks = splitArrayInChunks(chunks, 5);
@@ -122,13 +122,13 @@ export class SQSProvider implements Provider {
   async markAsDeadMessages(messages: Message[]): Promise<void> {
     if (messages.length === 0) return;
 
-    if (!this.sqsConfig.deadQueueUrl) {
-      throw Error("Need to pass 'deadQueueUrl' in sqs config");
+    if (!this.hasDeadQueue()) {
+      throw Error("Need to pass 'deadQueueUrl' in SQS config");
     }
 
     const chunks = splitArrayInChunks(
       messages,
-      this.MAX_NUMBER_OF_MESSAGES_BY_SQS_REQUEST,
+      this.MAX_NUMBER_OF_MESSAGES_BY_CHUNK,
     );
 
     const chunksOfChunks = splitArrayInChunks(chunks, 5);

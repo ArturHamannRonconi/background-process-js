@@ -1,6 +1,6 @@
 {
   "name": "background-process-js",
-  "version": "9.1.0",
+  "version": "9.2.0",
   "main": "./lib/index.js",
   "keywords": [
     "backgroundjs",
@@ -14,7 +14,8 @@
   "description": "A set of util tools for create background process.",
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-sqs": "3.620.0"
+    "@aws-sdk/client-sqs": "3.620.0",
+    "node-cache": "^5.1.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
@@ -24,8 +25,8 @@
     "eslint": "^8.42.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "prettier": "^3.0.0",
     "jest": "^29.7.0",
+    "prettier": "^3.0.0",
     "ts-jest": "^29.1.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "*"
